@@ -174,3 +174,29 @@ func TestJSONFrameReaderShortBuffer(t *testing.T) {
 		t.Fatalf("unexpected: %v %d %q", err, n, buf)
 	}
 }
+
+func BenchmarkNewJSONFramedReader(b *testing.B) {
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			s := bytes.NewBufferString("{\"test\":true}\n1\n[\"a\"]")
+			r := NewJSONFramedReader(ioutil.NopCloser(s))
+			buf := make([]byte, 20)
+			if n, err := r.Read(buf); err != nil || n != 13 || string(buf[:n]) != `{"test":true}` {
+				b.Fatalf("unexpected: %v %d %q", err, n, buf)
+			}
+			if n, err := r.Read(buf); err != nil || n != 1 || string(buf[:n]) != `1` {
+				b.Fatalf("unexpected: %v %d %q", err, n, buf)
+			}
+			if n, err := r.Read(buf); err != nil || n != 5 || string(buf[:n]) != `["a"]` {
+				b.Fatalf("unexpected: %v %d %q", err, n, buf)
+			}
+			if n, err := r.Read(buf); err != io.EOF || n != 0 {
+				b.Fatalf("unexpected: %v %d %q", err, n, buf)
+			}
+		}
+	})
+	b.StopTimer()
+
+}
